@@ -116,7 +116,7 @@ export function BillLoggingPage() {
             </div>
 
             <div>
-              <h3 className="mb-3 text-lg font-semibold text-slate-900">Supporting documents</h3>
+              <h3 className="mb-3 text-lg font-semibold text-slate-900">SUPPORTING DOCUMENTS</h3>
               <FileUpload
                 accept=".pdf,.jpg,.jpeg,.png"
                 multiple
