@@ -63,6 +63,18 @@ export function BillLoggingPage() {
 
         <Card>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div>
+              <h3 className="mb-3 text-lg font-semibold text-slate-900">SUPPORTING DOCUMENTS</h3>
+              <FileUpload
+                accept=".pdf,.jpg,.jpeg,.png"
+                multiple
+                onFilesSelected={(files) => setDocuments(files)}
+                onUpload={async () => {
+                  toast.success(`${documents.length} file(s) attached.`)
+                }}
+              />
+            </div>
+
             <div className="grid gap-5 md:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">Bill type / category</label>
@@ -113,18 +125,6 @@ export function BillLoggingPage() {
                 className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-slate-900 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
               />
               {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>}
-            </div>
-
-            <div>
-              <h3 className="mb-3 text-lg font-semibold text-slate-900">SUPPORTING DOCUMENTS</h3>
-              <FileUpload
-                accept=".pdf,.jpg,.jpeg,.png"
-                multiple
-                onFilesSelected={(files) => setDocuments(files)}
-                onUpload={async () => {
-                  toast.success(`${documents.length} file(s) attached.`)
-                }}
-              />
             </div>
 
             <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-4">
