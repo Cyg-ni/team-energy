@@ -1,223 +1,64 @@
-# Project Manifest - TeamEnergy Frontend
+# Project Manifest - TeamEnergy Bill Management Frontend
 
-## ✅ Complete Deliverables
+## Overview
+This project is a React + Vite app for a bill management system with mock authentication, role-based access, billing workflows, and admin-only controls.
 
-### Configuration & Setup Files
-```
-✓ package.json              - Dependencies and scripts
-✓ vite.config.js            - Vite build configuration
-✓ tailwind.config.js        - Tailwind CSS theme customization
-✓ postcss.config.js         - PostCSS configuration
-✓ .eslintrc.json            - ESLint configuration
-✓ .prettierrc               - Prettier formatting rules
-✓ .gitignore                - Git ignore patterns
-✓ .env.example              - Environment variables template
-✓ index.html                - HTML entry point
-```
+## Stack
+- React 19
+- Vite
+- Tailwind CSS
+- React Router DOM
+- Zustand
+- Axios
 
-### Documentation
-```
-✓ README.md                 - Complete project documentation
-✓ QUICK_START.md            - Quick start guide (5 minutes)
-✓ DEVELOPMENT.md            - Development guidelines & best practices
-✓ COMPONENTS.md             - Component API reference with examples
-✓ PROJECT_SUMMARY.md        - Project overview and structure
-✓ PROJECT_MANIFEST.md       - This file (complete deliverables)
-```
-
-### Source Code - Entry Points
-```
-✓ src/main.jsx              - React entry point
-✓ src/App.jsx               - Main App component with routing
-✓ src/index.css             - Tailwind CSS styles
+## Main structure
+```text
+src/
+  components/
+    layout/
+    tables/
+    ui/
+    upload/
+  layouts/
+  pages/
+    Bills/
+  routes/
+  services/
+  store/
+  utils/
 ```
 
-### Source Code - Pages (5 Complete Pages)
-```
-✓ src/pages/Login.jsx       - Login page with form & validation
-✓ src/pages/Dashboard.jsx   - Dashboard with cards & tables
-✓ src/pages/UploadBills.jsx - File upload with drag-drop
-✓ src/pages/Alerts.jsx      - Alerts management page
-✓ src/pages/Profile.jsx     - User profile & settings
-✓ src/pages/NotFound.jsx    - 404 error page
-```
+## Included screens
+- Login
+- Dashboard
+- Bill Logging
+- Bill History
+- Bill Details
+- Settings
+- Organization Accounts
+- Not Found
 
-### Source Code - Components (20+ Reusable Components)
+## Included features
+- Role-based login flow
+- Sidebar navigation
+- Dashboard summary cards
+- Bill entry and validation
+- Searchable bill history
+- Detail view with status timeline
+- Settings management UI
+- Admin-only account control
+- Responsive layout
 
-**UI Components (src/components/ui/)**
-```
-✓ Button.jsx                - Button component (5 variants)
-✓ Input.jsx                 - Input field component
-✓ Card.jsx                  - Card container component
-✓ Badge.jsx                 - Badge/label component
-✓ Modal.jsx                 - Modal dialog component
-✓ index.jsx                 - Avatar, Loader, Skeleton, Alert, EmptyState, SearchBar
-```
-
-**Layout Components (src/components/layout/)**
-```
-✓ Sidebar.jsx               - Sidebar navigation & navbar
-```
-
-**Data Components (src/components/tables/)**
-```
-✓ Table.jsx                 - Data table & pagination
+## Run
+```bash
+npm install
+npm run dev
 ```
 
-**Upload Components (src/components/upload/)**
+## Build
+```bash
+npm run build
 ```
-✓ FileUpload.jsx            - Drag-drop file upload
-```
-
-**Layout Wrapper (src/layouts/)**
-```
-✓ MainLayout.jsx            - Main & Auth layouts
-```
-
-### Source Code - Services & API
-```
-✓ src/services/api.js       - Axios instance & API endpoints
-```
-
-### Source Code - State Management
-```
-✓ src/store/authStore.js    - Zustand auth & UI store
-```
-
-### Source Code - Custom Hooks
-```
-✓ src/hooks/useCustomHooks.js - 6 custom hooks
-```
-
-### Source Code - Routes
-```
-✓ src/routes/routes.jsx     - Route definitions & protected routes
-```
-
-### Source Code - Utilities
-```
-✓ src/utils/helpers.js      - Common utility functions
-✓ src/utils/mockData.js     - Mock data for development
-```
-
-### Folders (Empty, ready for content)
-```
-✓ src/assets/               - For images and static files
-✓ src/components/forms/     - For form components
-✓ src/components/cards/     - For card variants
-✓ src/components/alerts/    - For alert variants
-```
-
----
-
-## 📊 File Statistics
-
-**Total Files Created: 38**
-
-| Category | Count |
-|----------|-------|
-| Configuration | 9 |
-| Documentation | 6 |
-| Pages | 6 |
-| UI Components | 10 |
-| Layout Components | 2 |
-| Data Components | 2 |
-| Upload Components | 1 |
-| Services | 1 |
-| State Management | 1 |
-| Custom Hooks | 1 |
-| Routes | 1 |
-| Utilities | 2 |
-| **Total** | **42** |
-
-**Lines of Code: ~3,500+** (production-ready code)
-
----
-
-## 🎯 Features Implemented
-
-### Authentication
-- ✅ Login page with form validation
-- ✅ Protected routes
-- ✅ Token-based auth (localStorage)
-- ✅ Auto redirect to login on 401
-- ✅ Logout functionality
-- ✅ Auth store with Zustand
-
-### Dashboard
-- ✅ 4 summary cards with metrics
-- ✅ Recent bills table
-- ✅ Recent activity feed
-- ✅ Quick stats section
-- ✅ Responsive grid layout
-- ✅ Mock data included
-
-### Bill Upload
-- ✅ Drag & drop file upload
-- ✅ File browser button
-- ✅ Vendor name input
-- ✅ Bill date picker
-- ✅ Upload progress bar
-- ✅ OCR processing simulation
-- ✅ File preview list
-- ✅ Success/error toasts
-
-### Alerts
-- ✅ Alert filtering by type
-- ✅ Critical/warning/info badges
-- ✅ Mark as read functionality
-- ✅ Dismiss alerts
-- ✅ Alert statistics
-- ✅ Unread count badge
-
-### Profile
-- ✅ User info display/edit
-- ✅ Avatar section
-- ✅ Password change form
-- ✅ Account settings
-- ✅ Delete account option
-- ✅ Form validation
-
-### UI Components (20+)
-- ✅ Button (5 variants)
-- ✅ Input with validation
-- ✅ Card with header/footer
-- ✅ Badge (6 variants)
-- ✅ Modal & ConfirmModal
-- ✅ Avatar with fallback
-- ✅ Loader spinner
-- ✅ Skeleton placeholder
-- ✅ Alert box
-- ✅ Search bar
-- ✅ Empty state
-- ✅ Table with pagination
-- ✅ File upload
-
-### Responsive Design
-- ✅ Mobile (< 768px)
-- ✅ Tablet (768px - 1024px)
-- ✅ Desktop (> 1024px)
-- ✅ Sidebar collapse on mobile
-- ✅ Touch-friendly interactions
-- ✅ All components tested
-
-### State Management
-- ✅ Zustand auth store
-- ✅ Zustand UI store
-- ✅ 6 custom hooks
-- ✅ Local storage persistence
-- ✅ Async handling
-
-### API Integration
-- ✅ Axios instance with interceptors
-- ✅ 20+ API endpoints defined
-- ✅ Error handling
-- ✅ Mock data for development
-- ✅ Ready for Spring Boot backend
-
-### Developer Experience
-- ✅ ESLint configured
-- ✅ Prettier configured
 - ✅ 6 documentation files
 - ✅ JSDoc comments throughout
 - ✅ Example code in components

@@ -1,15 +1,31 @@
 import { Navigate } from 'react-router-dom'
 import { LoginPage } from '../pages/Login'
 import { DashboardPage } from '../pages/Dashboard'
-import { UploadBillsPage } from '../pages/UploadBills'
-import { AlertsPage } from '../pages/Alerts'
-import { ProfilePage } from '../pages/Profile'
+import { BillLoggingPage } from '../pages/Bills/BillLogging'
+import { BillHistoryPage } from '../pages/Bills/BillHistory'
+import { BillDetailsPage } from '../pages/Bills/BillDetails'
+import { SettingsPage } from '../pages/Settings'
+import { OrganizationAccountsPage } from '../pages/OrganizationAccounts'
 import { NotFoundPage } from '../pages/NotFound'
 import { useAuthStore } from '../store/authStore'
 
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const user = useAuthStore((state) => state.user)
-  return user ? children : <Navigate to="/login" replace />
+
+  if (!user) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (requireAdmin && user.role !== 'Admin') {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  return children
+}
+
+const RootRedirect = () => {
+  const user = useAuthStore((state) => state.user)
+  return <Navigate to={user ? '/dashboard' : '/login'} replace />
 }
 
 export const routes = [
@@ -26,26 +42,26 @@ export const routes = [
     ),
   },
   {
-    path: '/upload-bills',
+    path: '/bills/logging',
     element: (
       <ProtectedRoute>
-        <UploadBillsPage />
+        <BillLoggingPage />
       </ProtectedRoute>
     ),
   },
   {
-    path: '/alerts',
+    path: '/bills/history',
     element: (
       <ProtectedRoute>
-        <AlertsPage />
+        <BillHistoryPage />
       </ProtectedRoute>
     ),
   },
   {
-    path: '/profile',
+    path: '/bills/:id',
     element: (
       <ProtectedRoute>
-        <ProfilePage />
+        <BillDetailsPage />
       </ProtectedRoute>
     ),
   },
@@ -53,13 +69,21 @@ export const routes = [
     path: '/settings',
     element: (
       <ProtectedRoute>
-        <DashboardPage /> {/* Placeholder - create settings page as needed */}
+        <SettingsPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/organization-accounts',
+    element: (
+      <ProtectedRoute requireAdmin>
+        <OrganizationAccountsPage />
       </ProtectedRoute>
     ),
   },
   {
     path: '/',
-    element: <Navigate to="/login" replace />,
+    element: <RootRedirect />,
   },
   {
     path: '*',
