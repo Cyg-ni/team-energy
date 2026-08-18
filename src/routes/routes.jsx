@@ -6,10 +6,11 @@ import { BillHistoryPage } from '../pages/Bills/BillHistory'
 import { BillDetailsPage } from '../pages/Bills/BillDetails'
 import { SettingsPage } from '../pages/Settings'
 import { OrganizationAccountsPage } from '../pages/OrganizationAccounts'
+import { ApprovalsPage } from '../pages/Approvals'
 import { NotFoundPage } from '../pages/NotFound'
 import { useAuthStore } from '../store/authStore'
 
-const ProtectedRoute = ({ children, requireAdmin = false }) => {
+const ProtectedRoute = ({ children, requireAdmin = false, allowedRoles = ['Admin', 'Approver', 'Staff', 'Viewer'] }) => {
   const user = useAuthStore((state) => state.user)
 
   if (!user) {
@@ -17,6 +18,10 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   }
 
   if (requireAdmin && user.role !== 'Admin') {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  if (!allowedRoles.includes(user.role)) {
     return <Navigate to="/dashboard" replace />
   }
 
@@ -44,8 +49,16 @@ export const routes = [
   {
     path: '/bills/logging',
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={['Admin', 'Staff']}>
         <BillLoggingPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/approvals',
+    element: (
+      <ProtectedRoute allowedRoles={['Admin', 'Approver']}>
+        <ApprovalsPage />
       </ProtectedRoute>
     ),
   },

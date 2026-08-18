@@ -1,16 +1,20 @@
-# TeamEnergy Bill Management Frontend
+# TeamEnergy
 
-A modern bill management interface for tracking, reviewing, and approving invoices in a finance workflow.
+Electricity bill management and energy monitoring frontend.
 
 ## Features
-- Login with role-based access
-- Dashboard summary and activity overview
-- Bill logging form with validation and file upload
-- Searchable bill history and filters
-- Bill detail view with status timeline
-- Settings page with profile and organization controls
-- Admin-only organization accounts screen
-- Responsive layout
+- OCR upload for electricity bills
+- Review and validate extracted bill data
+- Energy dashboard with reduction goal tracking
+- Searchable electricity bill history
+- Role-based access for Admin, Approver, Staff, and Viewer
+- Responsive enterprise dashboard UI
+
+## Unique features by user
+- Admin: full access, manages users and accounts
+- Approver: reviews pending bill approvals
+- Staff: uploads bills, validates OCR data, tracks usage
+- Viewer: reads dashboard and bill history only
 
 ## Tech stack
 - React 19
@@ -18,7 +22,6 @@ A modern bill management interface for tracking, reviewing, and approving invoic
 - Tailwind CSS
 - React Router
 - Zustand
-- Axios
 - React Hook Form
 
 ## Run locally
@@ -31,12 +34,14 @@ npm run dev
 - Admin: admin@teamenergy.com / password123
 - Approver: approver@teamenergy.com / password123
 - Staff: staff@teamenergy.com / password123
+- Viewer: viewer@teamenergy.com / password123
 
 ## Main routes
 - /login
 - /dashboard
 - /bills/logging
 - /bills/history
+- /approvals
 - /settings
 - /organization-accounts
 
@@ -46,4 +51,4 @@ npm run build
 ```
 
 ## Notes
-This version uses realistic mock data and mock authentication, with the service layer structured for future Spring Boot backend integration.
+This project uses mock data and mock authentication for frontend demo purposes.

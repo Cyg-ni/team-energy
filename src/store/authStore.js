@@ -34,6 +34,17 @@ const mockUsers = [
     avatar:
       'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=200&q=80',
   },
+  {
+    id: 'u-1004',
+    name: 'Nina Patel',
+    email: 'viewer@teamenergy.com',
+    role: 'Viewer',
+    company: 'Northstar Energy',
+    department: 'Compliance',
+    phone: '+1 (415) 990-1122',
+    avatar:
+      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
+  },
 ]
 
 const getStoredUser = () => {

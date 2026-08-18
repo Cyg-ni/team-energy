@@ -11,6 +11,7 @@ import {
   FaHome,
   FaBell,
   FaUser,
+  FaClipboardCheck,
 } from 'react-icons/fa'
 import { useAuthStore, useUIStore } from '../../store/authStore'
 import { Avatar } from '../ui/index'
@@ -25,15 +26,35 @@ export function Sidebar() {
   const logout = useAuthStore((state) => state.logout)
   const user = useAuthStore((state) => state.user)
 
-  const menuItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: FaHome },
-    { path: '/bills/logging', label: 'Bill Logging', icon: FaFileInvoiceDollar },
-    { path: '/bills/history', label: 'Bill History', icon: FaHistory },
-    { path: '/settings', label: 'Settings', icon: FaCog },
-    ...(user?.role === 'Admin'
-      ? [{ path: '/organization-accounts', label: 'Organization Accounts', icon: FaShieldAlt }]
-      : []),
-  ]
+  const roleMenus = {
+    Admin: [
+      { path: '/dashboard', label: 'Dashboard', icon: FaHome },
+      { path: '/bills/logging', label: 'Upload Electricity Bill', icon: FaFileInvoiceDollar },
+      { path: '/bills/history', label: 'Bill History', icon: FaHistory },
+      { path: '/approvals', label: 'Review Approvals', icon: FaClipboardCheck },
+      { path: '/organization-accounts', label: 'Organization Accounts', icon: FaShieldAlt },
+      { path: '/settings', label: 'Settings', icon: FaCog },
+    ],
+    Approver: [
+      { path: '/dashboard', label: 'Dashboard', icon: FaHome },
+      { path: '/approvals', label: 'Review Approvals', icon: FaClipboardCheck },
+      { path: '/bills/history', label: 'Bill History', icon: FaHistory },
+      { path: '/settings', label: 'Settings', icon: FaCog },
+    ],
+    Staff: [
+      { path: '/dashboard', label: 'Dashboard', icon: FaHome },
+      { path: '/bills/logging', label: 'Upload Electricity Bill', icon: FaFileInvoiceDollar },
+      { path: '/bills/history', label: 'Bill History', icon: FaHistory },
+      { path: '/settings', label: 'Settings', icon: FaCog },
+    ],
+    Viewer: [
+      { path: '/dashboard', label: 'Dashboard', icon: FaHome },
+      { path: '/bills/history', label: 'Bill History', icon: FaHistory },
+      { path: '/settings', label: 'Settings', icon: FaCog },
+    ],
+  }
+
+  const menuItems = roleMenus[user?.role] || roleMenus.Staff
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(`${path}/`)
 

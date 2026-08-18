@@ -14,21 +14,24 @@ npm run dev
 - Admin: admin@teamenergy.com / password123
 - Approver: approver@teamenergy.com / password123
 - Staff: staff@teamenergy.com / password123
+- Viewer: viewer@teamenergy.com / password123
 
 ## Main routes
 - /login
 - /dashboard
 - /bills/logging
 - /bills/history
+- /approvals
 - /settings
 - /organization-accounts
+
+## Unique features by user
+- Admin: manages users and accounts
+- Approver: reviews pending electricity bill approvals
+- Staff: uploads and validates bill data
+- Viewer: views reports and history only
 
 ## Production build
 ```bash
 npm run build
 ```
-
-## Notes
-- Uses mock authentication and mock bill data.
-- Admin-only section is visible only to Admin users.
-- Service layer is ready for backend integration later.
