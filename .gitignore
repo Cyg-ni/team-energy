@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Local AI-assistant settings - not everyone on the team uses these tools, keep out of shared repo
+.claude/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
