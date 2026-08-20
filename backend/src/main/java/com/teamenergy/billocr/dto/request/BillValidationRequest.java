@@ -27,7 +27,8 @@ public record BillValidationRequest(
     @NotBlank(message = "Billing period is required")
     String billingPeriod,
 
-    @NotNull(message = "Due date is required")
+    /** Not every provider prints one on the receipt (e.g. real BENECO bills seen so far don't) -
+     * left null rather than forcing staff to fabricate a date the source document doesn't have. */
     LocalDate dueDate,
 
     @NotNull(message = "Amount is required")

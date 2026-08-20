@@ -9,12 +9,16 @@ import com.teamenergy.billocr.service.ocr.ParsedBillData;
 import com.teamenergy.billocr.service.ocr.ProviderDetector;
 import com.teamenergy.billocr.storage.FileStorageService;
 import java.io.File;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 /** Orchestrates step 1 of the upload flow: store the file, OCR it, parse it, hand it back for validation. */
 @Service
 public class BillIngestionService {
+
+    private static final Logger log = LoggerFactory.getLogger(BillIngestionService.class);
 
     private final FileStorageService fileStorageService;
     private final OcrTextExtractor ocrTextExtractor;
@@ -38,6 +42,8 @@ public class BillIngestionService {
         if (ocrResult.rawText() == null || ocrResult.rawText().isBlank()) {
             throw new OcrProcessingException("No readable text found in the uploaded file.");
         }
+        log.info("OCR raw text for {} (confidence {}):\n{}",
+            documentReference, ocrResult.confidence(), ocrResult.rawText());
 
         BillParser parser = providerDetector.detect(ocrResult.rawText());
         ParsedBillData parsed = parser.parse(ocrResult.rawText());

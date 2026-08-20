@@ -21,7 +21,8 @@ public class ProviderDetector {
     public BillParser detect(String rawText) {
         String upper = rawText.toUpperCase(Locale.ROOT);
         return parsersByProviderKey.values().stream()
-            .filter(parser -> upper.contains(parser.providerKey().toUpperCase(Locale.ROOT)))
+            .filter(parser -> parser.detectionAliases().stream()
+                .anyMatch(alias -> upper.contains(alias.toUpperCase(Locale.ROOT))))
             .findFirst()
             .orElseThrow(() -> new OcrProcessingException(
                 "Could not identify a known electricity provider (e.g. BENECO) in the uploaded bill. "

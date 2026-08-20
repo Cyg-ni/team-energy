@@ -3,4 +3,5 @@ uploads/
 *.class
 .idea
 *.iml
+run-log.txt
 .vscode/

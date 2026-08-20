@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { FaUpload, FaCheckCircle } from 'react-icons/fa'
 import { MainLayout } from '../../layouts/MainLayout'
@@ -7,52 +8,34 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Badge } from '../../components/ui/Badge'
-
-// Simulated OCR extraction function
-const extractBillDataFromOCR = (fileName) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        provider: 'BENECO',
-        accountNumber: 'ACC-4521-8847-3',
-        billingDate: '2026-08-01',
-        billingPeriod: 'July 1 - July 31, 2026',
-        dueDate: '2026-08-15',
-        totalAmount: 3245.50,
-        previousReading: 12450,
-        currentReading: 12875,
-        consumption: 425,
-      })
-    }, 2000)
-  })
-}
+import { billsService, departmentsService } from '../../services/api'
 
 // Step 1: Upload Image
 function UploadStep({ onUploadComplete, isProcessing }) {
   const [preview, setPreview] = useState(null)
-  const [fileName, setFileName] = useState(null)
+  const [file, setFile] = useState(null)
 
   const handleFileChange = (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const selected = e.target.files?.[0]
+    if (!selected) return
 
-    setFileName(file.name)
+    setFile(selected)
 
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setPreview(reader.result)
+    if (selected.type.startsWith('image/')) {
+      const reader = new FileReader()
+      reader.onloadend = () => setPreview(reader.result)
+      reader.readAsDataURL(selected)
+    } else {
+      setPreview(null)
     }
-    reader.readAsDataURL(file)
   }
 
   const handleProcessImage = async () => {
-    if (!fileName) {
-      toast.error('Please upload an image first')
+    if (!file) {
+      toast.error('Please upload a file first')
       return
     }
-
-    const extractedData = await extractBillDataFromOCR(fileName)
-    onUploadComplete(extractedData, fileName)
+    await onUploadComplete(file)
   }
 
   return (
@@ -60,13 +43,13 @@ function UploadStep({ onUploadComplete, isProcessing }) {
       <div>
         <h3 className="mb-4 text-lg font-semibold text-slate-900">Step 1: Upload Electricity Bill Image</h3>
         <p className="mb-4 text-sm text-slate-600">
-          Upload a photo or scan of your electricity bill. Supported formats: JPG, JPEG, PNG
+          Upload a photo or scan of your electricity bill. Supported formats: JPG, JPEG, PNG, PDF
         </p>
 
         <div className="rounded-xl border-2 border-dashed border-blue-300 bg-blue-50 p-8 text-center">
           <input
             type="file"
-            accept=".jpg,.jpeg,.png"
+            accept=".jpg,.jpeg,.png,.pdf"
             onChange={handleFileChange}
             disabled={isProcessing}
             className="hidden"
@@ -75,9 +58,9 @@ function UploadStep({ onUploadComplete, isProcessing }) {
           <label htmlFor="bill-upload" className="cursor-pointer">
             <FaUpload className="mx-auto mb-3 text-3xl text-blue-600" />
             <p className="text-sm font-medium text-slate-900">
-              {fileName ? `Selected: ${fileName}` : 'Click to browse or drag and drop'}
+              {file ? `Selected: ${file.name}` : 'Click to browse or drag and drop'}
             </p>
-            <p className="mt-1 text-xs text-slate-500">JPG, JPEG, or PNG (Max 5MB)</p>
+            <p className="mt-1 text-xs text-slate-500">JPG, JPEG, PNG, or PDF (Max 10MB)</p>
           </label>
         </div>
 
@@ -90,7 +73,7 @@ function UploadStep({ onUploadComplete, isProcessing }) {
       </div>
 
       <div className="flex gap-3 border-t border-slate-200 pt-4">
-        <Button onClick={handleProcessImage} isLoading={isProcessing} disabled={!fileName || isProcessing}>
+        <Button onClick={handleProcessImage} isLoading={isProcessing} disabled={!file || isProcessing}>
           {isProcessing ? 'Processing with OCR...' : 'Extract Bill Information'}
         </Button>
       </div>
@@ -99,27 +82,29 @@ function UploadStep({ onUploadComplete, isProcessing }) {
 }
 
 // Step 2: Validate and Edit OCR Data
-function ValidateStep({ ocrData, fileName, onSubmit, isSubmitting, onReset }) {
+function ValidateStep({ ocrData, departments, onSubmit, isSubmitting, onReset }) {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm({
     defaultValues: {
+      departmentId: departments[0]?.id ?? '',
       provider: ocrData.provider || '',
       accountNumber: ocrData.accountNumber || '',
       billingDate: ocrData.billingDate || '',
       billingPeriod: ocrData.billingPeriod || '',
       dueDate: ocrData.dueDate || '',
-      totalAmount: ocrData.totalAmount || '',
-      previousReading: ocrData.previousReading || '',
-      currentReading: ocrData.currentReading || '',
-      consumption: ocrData.consumption || '',
+      totalAmount: ocrData.totalAmount ?? '',
+      previousReading: ocrData.previousReading ?? '',
+      currentReading: ocrData.currentReading ?? '',
+      consumption: ocrData.consumption ?? '',
     },
   })
 
   const handleFormSubmit = async (data) => {
-    await onSubmit(data, fileName)
+    await onSubmit(data, setError)
   }
 
   return (
@@ -131,7 +116,10 @@ function ValidateStep({ ocrData, fileName, onSubmit, isSubmitting, onReset }) {
             <div>
               <p className="text-sm font-medium text-blue-900">OCR Processing Complete</p>
               <p className="mt-1 text-xs text-blue-800">
-                Bill information has been automatically extracted from your image. Please review and correct any information if needed.
+                Bill information has been automatically extracted from your image. Please review and correct
+                any information if needed{ocrData.ocrConfidence != null &&
+                  ` (confidence: ${Math.round(ocrData.ocrConfidence * 100)}%)`}
+                . Fields OCR couldn't find are left blank - fill those in from the physical bill.
               </p>
             </div>
           </div>
@@ -145,6 +133,23 @@ function ValidateStep({ ocrData, fileName, onSubmit, isSubmitting, onReset }) {
 
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
         <div className="grid gap-5 md:grid-cols-2">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Department</label>
+            <select
+              disabled={departments.length === 0}
+              className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-slate-900 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              {...register('departmentId', { required: 'Department is required' })}
+            >
+              {departments.length === 0 && <option value="">Loading departments...</option>}
+              {departments.map((dept) => (
+                <option key={dept.id} value={dept.id}>
+                  {dept.name}
+                </option>
+              ))}
+            </select>
+            {errors.departmentId && <p className="mt-1 text-sm text-red-600">{errors.departmentId.message}</p>}
+          </div>
+
           <Input
             label="Electricity Provider"
             placeholder="e.g. BENECO"
@@ -174,9 +179,9 @@ function ValidateStep({ ocrData, fileName, onSubmit, isSubmitting, onReset }) {
           />
 
           <Input
-            label="Due Date"
+            label="Due Date (optional)"
             type="date"
-            {...register('dueDate', { required: 'Due date is required' })}
+            {...register('dueDate')}
             error={errors.dueDate?.message}
           />
 
@@ -240,41 +245,77 @@ function ValidateStep({ ocrData, fileName, onSubmit, isSubmitting, onReset }) {
 }
 
 export function BillLoggingPage() {
+  const navigate = useNavigate()
   const [step, setStep] = useState('upload')
   const [ocrData, setOcrData] = useState(null)
-  const [fileName, setFileName] = useState(null)
+  const [documentReference, setDocumentReference] = useState(null)
+  const [departments, setDepartments] = useState([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleUploadComplete = async (extractedData, uploadedFileName) => {
+  useEffect(() => {
+    departmentsService
+      .getAll()
+      .then((res) => setDepartments(res.data))
+      .catch(() => toast.error('Could not load departments - is the backend running?'))
+  }, [])
+
+  const handleUploadComplete = async (file) => {
     setIsProcessing(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const formData = new FormData()
+      formData.append('file', file)
+      const response = await billsService.extract(formData)
 
-      setOcrData(extractedData)
-      setFileName(uploadedFileName)
+      setOcrData(response.data)
+      setDocumentReference(response.data.documentReference)
       setStep('validate')
       toast.success('Bill information extracted successfully!')
     } catch (error) {
-      toast.error('Failed to process bill image. Please try again.')
+      toast.error(error.response?.data?.message || 'Failed to process bill image. Please try again.')
     } finally {
       setIsProcessing(false)
     }
   }
 
-  const handleValidateSubmit = async (validatedData, file) => {
+  const handleValidateSubmit = async (formData, setError) => {
     setIsSubmitting(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const payload = {
+        departmentId: Number(formData.departmentId),
+        provider: formData.provider,
+        accountNumber: formData.accountNumber,
+        billingDate: formData.billingDate,
+        billingPeriod: formData.billingPeriod,
+        dueDate: formData.dueDate || null,
+        totalAmount: Number(formData.totalAmount),
+        previousReading: Number(formData.previousReading),
+        currentReading: Number(formData.currentReading),
+        consumption: Number(formData.consumption),
+        documentReference,
+        ocrExtracted: true,
+        ocrConfidence: ocrData?.ocrConfidence ?? null,
+      }
+
+      const response = await billsService.create(payload)
 
       toast.success('Electricity bill saved successfully!')
-      console.log('Saved bill data:', validatedData)
-
       setStep('upload')
       setOcrData(null)
-      setFileName(null)
+      setDocumentReference(null)
+      navigate(`/bills/${response.data.id}`)
     } catch (error) {
-      toast.error('Failed to save bill. Please try again.')
+      const fieldErrors = error.response?.data?.fieldErrors
+      if (fieldErrors) {
+        Object.entries(fieldErrors).forEach(([field, message]) => {
+          if (field in formData) {
+            setError(field, { type: 'server', message })
+          }
+        })
+        toast.error('Please fix the highlighted fields')
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to save bill. Please try again.')
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -283,7 +324,7 @@ export function BillLoggingPage() {
   const handleReset = () => {
     setStep('upload')
     setOcrData(null)
-    setFileName(null)
+    setDocumentReference(null)
     setIsProcessing(false)
   }
 
@@ -310,7 +351,7 @@ export function BillLoggingPage() {
           {step === 'validate' && ocrData && (
             <ValidateStep
               ocrData={ocrData}
-              fileName={fileName}
+              departments={departments}
               onSubmit={handleValidateSubmit}
               isSubmitting={isSubmitting}
               onReset={handleReset}

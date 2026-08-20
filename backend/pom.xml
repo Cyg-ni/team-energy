@@ -47,14 +47,9 @@
       <scope>runtime</scope>
     </dependency>
 
-    <!-- OCR engine -->
-    <dependency>
-      <groupId>net.sourceforge.tess4j</groupId>
-      <artifactId>tess4j</artifactId>
-      <version>5.11.0</version>
-    </dependency>
+    <!-- OCR engine is Gemini, called directly over REST (see GeminiOcrTextExtractor) -->
 
-    <!-- Rasterizes PDF pages to images so Tesseract can read them -->
+    <!-- Rasterizes PDF pages to images so Vision can read them -->
     <dependency>
       <groupId>org.apache.pdfbox</groupId>
       <artifactId>pdfbox</artifactId>

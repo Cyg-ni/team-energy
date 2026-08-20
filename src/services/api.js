@@ -51,14 +51,21 @@ export const dashboardService = {
 
 // Bills Endpoints
 export const billsService = {
-  getAll: (page = 1, limit = 10) => api.get(`/bills?page=${page}&limit=${limit}`),
+  getAll: (departmentId) =>
+    api.get('/bills', { params: departmentId ? { departmentId } : {} }),
   getById: (id) => api.get(`/bills/${id}`),
-  upload: (formData) =>
-    api.post('/bills/upload', formData, {
+  // Step 1 of the OCR flow: OCR the uploaded file, get back best-effort extracted fields.
+  extract: (formData) =>
+    api.post('/bills/extract', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-  delete: (id) => api.delete(`/bills/${id}`),
-  update: (id, data) => api.put(`/bills/${id}`, data),
+  // Step 2: persist the human-validated fields.
+  create: (data) => api.post('/bills', data),
+}
+
+// Departments Endpoints
+export const departmentsService = {
+  getAll: () => api.get('/departments'),
 }
 
 // Alerts Endpoints

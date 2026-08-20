@@ -144,14 +144,18 @@ Response is a full `BillResponse`, including the computed `reductionPercentVsBas
 
 ## 5. How OCR actually works here
 
-1. `FileStorageService` saves the upload locally, then (if configured) pushes the same bytes to Supabase Storage — see [Section 7](#7-supabase-database--storage).
-2. `TesseractOcrTextExtractor` runs the local copy through Tesseract (via Tess4J) — PDFs are rasterized page-by-page first (`PdfToImageConverter`, Apache PDFBox), then OCR'd. It computes an overall confidence score from Tesseract's per-word confidence.
-3. `ProviderDetector` scans the raw text for a known provider name ("BENECO").
-4. The matching `BillParser` runs label-anchored regex over the raw text — e.g. `Total Amount Due\s*[:\-]?\s*(?:php|₱)?\s*([\d,]+\.\d{2})` — to pull each field. Consumption falls back to `currentReading - previousReading` if there's no explicit "Consumption" line.
+1. `FileStorageService` saves the upload locally, then (if configured) pushes the same bytes to Supabase Storage — see [Section 7](#7-supabase--gemini).
+2. `GeminiOcrTextExtractor` sends the local copy to the Gemini API (`generateContent`, prompted to transcribe text only, no commentary) — PDFs are rasterized page-by-page first (`PdfToImageConverter`, Apache PDFBox), each page sent as a separate request. Gemini doesn't expose a calibrated per-page confidence score the way traditional OCR engines do, so `ocrConfidence` here is a fixed placeholder (0.85), clearly labeled as such in code — not a real measurement.
+3. `ProviderDetector` scans the returned text for a known provider name ("BENECO").
+4. The matching `BillParser` runs label-anchored regex over the text — e.g. `Total Amount Due\s*[:\-]?\s*(?:php|₱)?\s*([\d,]+\.\d{2})` — to pull each field. Consumption falls back to `currentReading - previousReading` if there's no explicit "Consumption" line.
 
-**This is a deliberate MVP choice, not a limitation nobody noticed:** cloud Document AI (Google/Azure/AWS) would be materially more accurate, especially on skewed phone photos, but costs money and adds an external dependency. Rule-based extraction is free, self-hosted, and fully offline — a better fit for a capstone budget — at the cost of being more brittle if BENECO changes their bill layout. If accuracy becomes a problem in testing, swapping `OcrTextExtractor`'s implementation is a one-class change; nothing else in the pipeline needs to know.
+**Why Gemini, and not Tesseract or Google Cloud Vision, given this scaffold has now used three different OCR engines:** the original MVP choice was Tesseract (free, self-hosted, offline). In real testing against an actual phone photo of a bill (sent through a Messenger group chat, downloaded from there), Tesseract's native engine crashed with `java.lang.Error: Invalid memory access` — not a bad-accuracy result, a hard crash, reproducible across multiple re-encodings of the same file, isolated via a clean control test (Windows' own default wallpaper JPEG processed successfully, proving the Tesseract/JNA setup itself was fine — the crash was specific to real-world phone-camera JPEGs). That pushed the switch to Google Cloud Vision, a production OCR service immune to that failure mode. Cloud Vision worked, but requires a Google Cloud billing account (a card on file) even to use its free tier — friction the team preferred to avoid. Google AI Studio's Gemini API free tier does not require billing setup, and Gemini's multimodal capability handles messy real-world photos at least as well as traditional OCR for this purpose. Worth knowing this history if anyone's tempted to swap the engine again later - the interface exists exactly so that's cheap to do.
 
-**On real BENECO bill samples:** not needed to build or test anything in this section so far — `BenecoBillParserTest` validates the regex logic against hand-written sample text, and that's independent of whether a real bill photo exists yet. Real samples become necessary the moment someone wants to know "does this actually read a real BENECO bill correctly," which is a tuning task, not a blocker for anything built so far (including the Supabase work below). Worth asking your groupmate for a few photos soon so that task isn't sitting idle, but nothing here is waiting on it.
+**Swapping the engine was a one-class change again, exactly as designed:** `OcrTextExtractor` is an interface; `GeminiOcrTextExtractor` is its only implementation now. Nothing else in the pipeline — `ProviderDetector`, `BillParser`, `BillIngestionService`, the controller — changed at all across any of these three swaps.
+
+**Design choice worth flagging: Gemini transcribes plain text here, it doesn't extract structured fields directly.** Gemini could be prompted to return the bill's fields as JSON directly, which would let `BenecoBillParser`'s regex retire entirely — a genuinely reasonable next evolution. Deliberately not done in this pass, to keep the engine swap itself a contained, low-risk change on top of everything else that's already happened.
+
+**On real BENECO bill samples:** `BenecoBillParserTest` validates the regex logic against hand-written sample text, independent of whether a real bill photo exists — that part was never blocked on this. Real samples are still worth getting from a groupmate to confirm the regex matches BENECO's actual wording, now that the OCR engine itself is confirmed to handle real photos without crashing.
 
 ---
 
@@ -169,7 +173,7 @@ cd backend
 - The default profile requires `SUPABASE_DB_URL`, `SUPABASE_DB_USER`, `SUPABASE_DB_PASSWORD` to be set (see [Section 7](#7-supabase-database--storage)) — the app fails fast at startup if they're missing, which is intentional so nobody accidentally runs against nothing.
 - The `local` profile needs none of that — it boots against an in-memory H2 database exactly like before this change, for offline solo work or when Supabase is unreachable. Data there is **not** shared with the team and resets every restart.
 - CORS is pre-configured for the Vite dev server (`http://localhost:5173`) on both profiles.
-- **Before `/api/bills/extract` will work** (either profile), download `eng.traineddata` from the [tessdata repo](https://github.com/tesseract-ocr/tessdata) and point `app.ocr.tessdata-path` in `application.properties` at the folder it's in. This wasn't tested against a real bill photo yet.
+- **Before `/api/bills/extract` will work** (either profile), set `GEMINI_API_KEY` — see [Section 7c](#7c-gemini). Every other endpoint works fine without it; this one specifically returns a clean `422` if it's missing, rather than blocking the whole app from starting.
 
 ```bash
 ./mvnw test                  # 5/5 passing: BillServiceTest (Mockito), BenecoBillParserTest
@@ -177,9 +181,9 @@ cd backend
 
 ---
 
-## 7. Supabase (database + storage)
+## 7. Supabase + Gemini
 
-Two independent pieces, both driven by environment variables — nothing Supabase-related is hardcoded or committed to the repo.
+Three independent pieces, all driven by environment variables — nothing secret is hardcoded or committed to the repo.
 
 ### 7a. Database — Supabase Postgres replaces H2 as the shared source of truth
 
@@ -206,7 +210,7 @@ Set these as real environment variables (shell `export`/`$env:`, or your IDE's r
 
 **Why:** `FileStorageService` was writing uploads only to local disk (`uploads/`, gitignored) — fine for OCR to process, useless for the team, since a bill photo uploaded on one laptop was invisible to everyone else and gone if that laptop's `uploads/` folder was ever cleared.
 
-**How it works now:** Tesseract still needs a local file to actually run OCR against (it can't read a remote bucket directly), so uploads are written locally exactly as before — that part didn't change. What's new is that `FileStorageService.store()` also pushes the same bytes to a Supabase Storage bucket, using `documentReference` as the same key in both places. There's no official Supabase SDK for Java/Spring, so `SupabaseStorageClient` calls the Storage REST API directly (`POST /storage/v1/object/{bucket}/{path}`) via Spring's `RestClient`.
+**How it works now:** uploads are written locally exactly as before — `OcrTextExtractor.extractText()` takes a `File`, so there's still a local copy regardless of which OCR engine reads it. What's new is that `FileStorageService.store()` also pushes the same bytes to a Supabase Storage bucket, using `documentReference` as the same key in both places. There's no official Supabase SDK for Java/Spring, so `SupabaseStorageClient` calls the Storage REST API directly (`POST /storage/v1/object/{bucket}/{path}`) via Spring's `RestClient`.
 
 | Env var | Where to find it |
 |---|---|
@@ -219,13 +223,41 @@ Set these as real environment variables (shell `export`/`$env:`, or your IDE's r
 
 **Verification status: written against Supabase's documented Storage REST API, but NOT tested against a live bucket** — I don't have a service-role key, correctly, since that shouldn't be pasted into chat. This is the most likely piece to need a fix on first real use if Supabase's endpoint/header shape has shifted. To verify: set both env vars, create the `bill-documents` bucket, hit `POST /api/bills/extract` with any file, and check the Supabase dashboard's Storage browser for the uploaded object. If it 502s, the error message will say "Storage Unavailable" with the underlying cause — check that first.
 
+### 7c. Gemini — the OCR engine
+
+Third OCR engine this scaffold has used; see [Section 5](#5-how-ocr-actually-works-here) for the full history (Tesseract → Google Cloud Vision → Gemini). Console is at **aistudio.google.com** — a separate, distinct product from `console.cloud.google.com` (used for the database/storage pieces above) and from the `cloud.google.com/.../docs` reference pages, which are documentation only, not a place to configure anything.
+
+| Env var | Where to find it |
+|---|---|
+| `GEMINI_API_KEY` | aistudio.google.com → sign in → **Get API key** → Create API key. **Secret.** |
+
+Setup, once: aistudio.google.com → Get API key → Create API key. Unlike Cloud Vision, this does **not** require a Google Cloud billing account / card on file for the free tier — the reason the team moved off Cloud Vision specifically. Free tier: 15 requests/minute, 1.5M tokens/day at time of writing — comfortably covers capstone-scale testing.
+
+`GeminiOcrTextExtractor` calls the plain REST endpoint (`POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key=...`) directly via Spring's `RestClient`, same lightweight pattern as `SupabaseStorageClient` — no official SDK dependency. The model name is a property (`app.gemini.model`), not hardcoded into the request logic, and its value has already changed three times during real testing:
+- `gemini-1.5-flash` (original default) had stopped existing entirely by the time this was tested against a real key — confirmed via `GET v1beta/models`, not guessed.
+- `gemini-flash-latest` (the auto-updating alias, tried next) resolved fine but returned real `503 SERVICE_UNAVAILABLE` ("high demand") in testing — being the newest model means also being the most contested one.
+- `gemini-2.5-flash` (a pinned, established release, tried next to dodge the contested-alias problem) resolved fine too, then Google deprecated it for new users *mid-project* — the `404` response explicitly named `gemini-3.6-flash` as the replacement.
+- **Current default: `gemini-3.6-flash`** — Google's own explicit recommendation from that error, not a guess.
+
+**Real lesson from all three swaps: pinned versions have gone stale faster than the `-latest` alias's main downside (503 under load) has recurred**, and that downside is now mitigated by retry logic (below). If `gemini-3.6-flash` also gets deprecated, it's worth reconsidering `gemini-flash-latest` again instead of chasing another pinned version — or just re-running the discovery command each time: `GET https://generativelanguage.googleapis.com/v1beta/models?key=$GEMINI_API_KEY`, filtered for entries where `supportedGenerationMethods` includes `generateContent`. That list is the only real source of truth; this doc is a snapshot, not a guarantee.
+
+**Retries `503`/`429` automatically (up to 3 attempts, short backoff) — added after hitting a real `503` in testing, not speculative.** Every other error status (bad key, bad request, model not found) fails immediately on the first attempt, since retrying those would just delay an error that won't change.
+
+**Design choice: Gemini is prompted to transcribe plain text, not extract structured JSON fields directly** — keeps `BenecoBillParser`'s existing regex parsing working unchanged. Asking Gemini for structured JSON output directly (retiring the regex entirely) is a reasonable future improvement, deliberately not done in this pass.
+
+**Confidence score is a fixed placeholder (0.85), not a real measurement** — Gemini's plain-text API doesn't expose a calibrated per-page confidence the way traditional OCR engines do. Worth revisiting if `ocrConfidence` needs to mean something real (e.g. asking Gemini to self-report a confidence estimate as part of its output).
+
+**Unlike the database, a missing API key doesn't stop the app from starting** — `GeminiProperties.isConfigured()` is checked only when `/api/bills/extract` is actually called, returning a clean `422` (`"Gemini isn't configured"`) instead. Deliberately different from the database's fail-at-startup behavior: OCR is one endpoint among several that don't need it (departments, reports, bill history all work with zero Gemini setup).
+
+**Verification status: boot-tested (app starts fine with no key set) and the missing-key error path confirmed clean** (`422`, not a crash) — the actual live Gemini call has not been exercised in this environment (no key here, correctly). First real test once `GEMINI_API_KEY` is set: `POST` a real bill photo to `/api/bills/extract` and confirm fields come back extracted, not another error.
+
 ---
 
 ## 8. Known limitations & next steps
 
-- **Regex patterns are unverified against real bills.** `BenecoBillParserTest` proves the regex logic works against text written by hand to look like a BENECO bill — nobody has run it against an actual scanned BENECO bill yet. Not urgent, not blocking anything else, but worth asking your groupmate for a handful of real bill photos soon so this doesn't become a last-minute scramble.
+- **Gemini's actual extraction accuracy against a real BENECO bill is unverified in this environment** (see 7c) — Tesseract's crash-on-real-photos problem is resolved by switching engines entirely, but nobody has checked yet whether the regex patterns in `BenecoBillParser` correctly match real BENECO wording once genuine OCR text comes back, rather than the hand-written sample text `BenecoBillParserTest` uses. This is the next real test to run now that a `GEMINI_API_KEY` is available.
 - **Supabase Storage upload is untested against a live bucket** (see 7b) — needs a real `service_role` key to verify.
 - **Supabase Postgres seeding (`ON CONFLICT` + `setval`) is untested against real Postgres** (see 7a) — standard syntax, but worth a first-boot check.
 - **No department picker in the frontend yet.** The save endpoint requires `departmentId`; `BillLogging.jsx`'s form doesn't currently collect one.
 - **No auth wired in.** Every endpoint is open right now. The frontend already has role-based mock auth (`authStore.js`) — connecting real auth is a separate task, deliberately not bundled into this OCR module.
-- **OCR accuracy on phone photos is untested and will be the weakest link** (glare, skew, low light). The human Validate step in the frontend isn't a nice-to-have here — treat it as load-bearing.
+- **The human Validate step in the frontend isn't a nice-to-have — treat it as load-bearing.** Even a production OCR engine won't read every bill perfectly (glare, skew, low light on a phone photo); the validate/correct step is the actual reliability mechanism, not a placeholder to remove later.

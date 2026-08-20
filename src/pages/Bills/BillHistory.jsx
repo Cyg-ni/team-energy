@@ -1,25 +1,43 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { MainLayout } from '../../layouts/MainLayout'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Badge } from '../../components/ui/Badge'
 import { Table } from '../../components/tables/Table'
-import { mockBillHistory } from '../../utils/mockData'
-import { formatCurrency, formatDate } from '../../utils/helpers'
+import { billsService } from '../../services/api'
 
-const statusOptions = ['All', 'validated', 'paid']
+const statusOptions = ['All', 'UPLOADED', 'EXTRACTED', 'VALIDATED', 'SUBMITTED', 'APPROVED', 'REJECTED', 'PAID']
 const providerOptions = ['All', 'BENECO', 'NUVELCO', 'MERALCO', 'ILOILO']
+
+// ₱ (PHP), not USD - src/utils/helpers.js's formatCurrency is hardcoded to USD, so amounts
+// are formatted directly here instead of reusing it.
+const formatPeso = (amount) =>
+  amount == null ? '—' : new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount)
+
+const formatDateOrDash = (value) =>
+  value ? new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(value)) : '—'
 
 export function BillHistoryPage() {
   const navigate = useNavigate()
+  const [bills, setBills] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   const [providerFilter, setProviderFilter] = useState('All')
 
+  useEffect(() => {
+    billsService
+      .getAll()
+      .then((res) => setBills(res.data))
+      .catch(() => toast.error('Could not load bill history - is the backend running?'))
+      .finally(() => setIsLoading(false))
+  }, [])
+
   const filteredBills = useMemo(() => {
-    return mockBillHistory.filter((bill) => {
+    return bills.filter((bill) => {
       const matchesSearch =
         bill.billNumber?.toLowerCase().includes(search.toLowerCase()) ||
         bill.provider?.toLowerCase().includes(search.toLowerCase()) ||
@@ -30,7 +48,7 @@ export function BillHistoryPage() {
 
       return matchesSearch && matchesStatus && matchesProvider
     })
-  }, [search, statusFilter, providerFilter])
+  }, [bills, search, statusFilter, providerFilter])
 
   const billColumns = [
     {
@@ -48,33 +66,39 @@ export function BillHistoryPage() {
       render: (value) => <span className="font-medium text-slate-900">{value}</span>,
     },
     {
-      key: 'amount',
+      key: 'totalAmount',
       label: 'Amount (₱)',
-      render: (value) => <span className="font-semibold text-slate-900">{formatCurrency(value)}</span>,
+      render: (value) => <span className="font-semibold text-slate-900">{formatPeso(value)}</span>,
     },
     {
-      key: 'paymentDate',
-      label: 'Payment Date',
-      render: (value) => formatDate(value),
+      key: 'dueDate',
+      label: 'Due Date',
+      render: (value) => formatDateOrDash(value),
     },
     {
-      key: 'consumptionReduction',
+      key: 'reductionPercentVsBaseline',
       label: 'Reduction vs Baseline',
-      render: (value) => (
-        <span className="inline-flex items-center gap-1 font-medium text-emerald-600">
-          {value}% <span>↓</span>
-        </span>
-      ),
+      render: (value) =>
+        value == null ? (
+          <span className="text-slate-400">—</span>
+        ) : (
+          <span className={`inline-flex items-center gap-1 font-medium ${value >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+            {Math.abs(value).toFixed(1)}% <span>{value >= 0 ? '↓' : '↑'}</span>
+          </span>
+        ),
     },
     {
       key: 'status',
       label: 'Status',
       render: (value) => {
         const variants = {
-          validated: 'info',
-          paid: 'success',
+          SUBMITTED: 'info',
+          VALIDATED: 'info',
+          APPROVED: 'success',
+          PAID: 'success',
+          REJECTED: 'danger',
         }
-        return <Badge variant={variants[value] || 'default'}>{value === 'validated' ? 'Validated' : 'Paid'}</Badge>
+        return <Badge variant={variants[value] || 'default'}>{value}</Badge>
       },
     },
   ]
@@ -123,7 +147,7 @@ export function BillHistoryPage() {
               >
                 {statusOptions.map((status) => (
                   <option key={status} value={status}>
-                    {status === 'All' ? 'All' : status === 'validated' ? 'Validated' : 'Paid'}
+                    {status}
                   </option>
                 ))}
               </select>
@@ -142,6 +166,7 @@ export function BillHistoryPage() {
           <Table
             columns={billColumns}
             data={filteredBills}
+            loading={isLoading}
             onRowClick={(row) => navigate(`/bills/${row.id}`)}
             empty={<div className="py-8 text-center text-slate-500">No electricity bills match your current filters.</div>}
           />

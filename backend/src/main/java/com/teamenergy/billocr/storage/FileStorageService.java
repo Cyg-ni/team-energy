@@ -14,10 +14,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * Writes uploads to local disk (Tesseract needs a local File to OCR against - it can't read a
- * remote bucket directly), then pushes the same bytes to Supabase Storage as the durable,
- * team-shared copy. documentReference is the same key in both places, so nothing downstream
- * needs to know storage is now two-tier.
+ * Writes uploads to local disk first (OcrTextExtractor's contract takes a File), then pushes
+ * the same bytes to Supabase Storage as the durable, team-shared copy. documentReference is
+ * the same key in both places, so nothing downstream needs to know storage is now two-tier.
  */
 @Service
 public class FileStorageService {

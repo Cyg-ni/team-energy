@@ -17,7 +17,10 @@ final class LooseDateParser {
         DateTimeFormatter.ofPattern("MMM d, yyyy"),
         DateTimeFormatter.ofPattern("MM/dd/yyyy"),
         DateTimeFormatter.ofPattern("M/d/yyyy"),
-        DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        DateTimeFormatter.ofPattern("yyyy-MM-dd"),
+        // Real BENECO invoices print dates as MM-dd-yyyy (e.g. "06-30-2026") - confirmed
+        // against an actual receipt photo, not assumed.
+        DateTimeFormatter.ofPattern("MM-dd-yyyy")
     );
 
     private LooseDateParser() {
